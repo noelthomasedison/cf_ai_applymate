@@ -3,7 +3,7 @@
  * Tools can either require human confirmation or execute automatically
  */
 import { tool, type ToolSet } from "ai";
-import { z } from "zod/v3";
+import { z } from "zod";
 
 import type { Chat } from "./server";
 import { getCurrentAgent } from "agents";
