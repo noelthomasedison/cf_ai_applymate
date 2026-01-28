@@ -16,15 +16,58 @@ import {
 import { createWorkersAI } from "workers-ai-provider";
 import { processToolCalls, cleanupMessages } from "./utils";
 import { tools, executions } from "./tools";
+type ChatState = {
+  profile?: string;
+  job?: string;
+  lastPackId?: string;
+};
 // import { env } from "cloudflare:workers";
 
 /**
  * Chat Agent implementation that handles real-time AI chat interactions
  */
-export class Chat extends AIChatAgent<Env> {
-  /**
-   * Handles incoming chat messages and manages the response stream
-   */
+
+export class Chat extends AIChatAgent<Env, ChatState> {
+  initialState: ChatState = { profile: "", job: "", lastPackId: "" };
+
+  setMemory(patch: Partial<ChatState>) {
+    this.setState({ ...this.state, ...patch });
+  }
+
+  getMemory() {
+    return this.state;
+  }
+
+  async startPack(appId?: string) {
+    const profile = this.state.profile?.trim();
+    const job = this.state.job?.trim();
+
+    if (!profile) return "❌ No profile saved. Use /profile <text> first.";
+    if (!job) return "❌ No job description saved. Use /job <text> first.";
+
+    const id = crypto.randomUUID();
+    const instance = await this.env.GENERATE_PACK.create({
+      id,
+      params: {
+        appId: appId ?? id,
+        resume: profile,
+        jd: job
+      }
+    });
+
+    this.setMemory({ lastPackId: instance.id });
+
+    return `🚀 Started workflow generate-pack.\nInstance ID: ${instance.id}\nUse /pack_status to check progress.`;
+  }
+
+  async packStatus(instanceId?: string) {
+    const id = instanceId ?? this.state.lastPackId;
+    if (!id) return "❌ No workflow instance id found. Run /pack first.";
+
+    const instance = await this.env.GENERATE_PACK.get(id);
+    const status = await instance.status();
+    return { id, status };
+  }
   async onChatMessage(
     onFinish: StreamTextOnFinishCallback<ToolSet>,
     options?: { abortSignal?: AbortSignal }
@@ -56,13 +99,20 @@ export class Chat extends AIChatAgent<Env> {
         });
 
         const result = streamText({
-          system: `You are a helpful assistant that can do various tasks... 
+          system: `You are ApplyMate, an AI assistant that helps generate application packs.
+
+Slash commands:
+- "/profile ..." -> call setProfile with the remaining text.
+- "/job ..." -> call setJob with the remaining text.
+- "/memory" -> call getMemory.
+- "/clear" -> call clearMemory.
+- "/pack" -> call createPack.
+- "/pack_status" -> call packStatus.
 
 ${getSchedulePrompt({ date: new Date() })}
 
 If the user asks to schedule a task, use the schedule tool to schedule the task.
 `,
-
           messages: await convertToModelMessages(processedMessages),
           model,
           tools: allTools,

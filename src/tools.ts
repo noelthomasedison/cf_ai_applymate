@@ -108,6 +108,65 @@ const cancelScheduledTask = tool({
   }
 });
 
+// ===== ApplyMate tools (Memory + Workflow) =====
+
+const setProfile = tool({
+  description: "Save resume/profile text into memory/state.",
+  inputSchema: z.object({ text: z.string() }),
+  execute: async ({ text }) => {
+    const { agent } = getCurrentAgent<Chat>();
+    agent!.setMemory({ profile: text });
+    return "✅ Saved profile/resume to memory.";
+  }
+});
+
+const setJob = tool({
+  description: "Save job description text into memory/state.",
+  inputSchema: z.object({ text: z.string() }),
+  execute: async ({ text }) => {
+    const { agent } = getCurrentAgent<Chat>();
+    agent!.setMemory({ job: text });
+    return "✅ Saved job description to memory.";
+  }
+});
+
+const getMemory = tool({
+  description: "Show saved memory (profile/job/lastPackId).",
+  inputSchema: z.object({}),
+  execute: async () => {
+    const { agent } = getCurrentAgent<Chat>();
+    return agent!.getMemory();
+  }
+});
+
+const clearMemory = tool({
+  description: "Clear saved memory (profile/job/lastPackId).",
+  inputSchema: z.object({}),
+  execute: async () => {
+    const { agent } = getCurrentAgent<Chat>();
+    agent!.setMemory({ profile: "", job: "", lastPackId: "" });
+    return "🧹 Cleared memory.";
+  }
+});
+
+const createPack = tool({
+  description: "Start the generate-pack workflow using saved profile + job.",
+  inputSchema: z.object({ appId: z.string().optional() }),
+  execute: async ({ appId }) => {
+    const { agent } = getCurrentAgent<Chat>();
+    return agent!.startPack(appId);
+  }
+});
+
+const packStatus = tool({
+  description: "Check status of the last generate-pack workflow instance.",
+  inputSchema: z.object({ instanceId: z.string().optional() }),
+  execute: async ({ instanceId }) => {
+    const { agent } = getCurrentAgent<Chat>();
+    return agent!.packStatus(instanceId);
+  }
+});
+
 /**
  * Export all available tools
  * These will be provided to the AI model to describe available capabilities
@@ -117,7 +176,15 @@ export const tools = {
   getLocalTime,
   scheduleTask,
   getScheduledTasks,
-  cancelScheduledTask
+  cancelScheduledTask,
+
+  // ApplyMate
+  setProfile,
+  setJob,
+  getMemory,
+  clearMemory,
+  createPack,
+  packStatus
 } satisfies ToolSet;
 
 /**
