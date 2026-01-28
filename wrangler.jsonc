@@ -23,6 +23,13 @@
       }
     ]
   },
+  "workflows": [
+    {
+      "name": "generate-pack",
+      "binding": "GENERATE_PACK",
+      "class_name": "GeneratePackWorkflow"
+    }
+  ],
   "migrations": [
     {
       "tag": "v1",
