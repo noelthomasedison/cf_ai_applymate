@@ -77,9 +77,16 @@ export class Chat extends AIChatAgent<Env, ChatState> {
     // );
 
     // Collect all tools, including MCP tools
+    let mcpTools = {};
+    try {
+      mcpTools = this.mcp.getAITools();
+    } catch (e) {
+      console.log("MCP tools unavailable:", e);
+    }
+
     const allTools = {
       ...tools,
-      ...this.mcp.getAITools()
+      ...mcpTools
     };
     const workersai = createWorkersAI({ binding: this.env.AI });
     const model = workersai("@cf/meta/llama-3.3-70b-instruct-fp8-fast" as any);
