@@ -26,11 +26,148 @@ import {
   StopIcon
 } from "@phosphor-icons/react";
 
+type PackOutput = {
+  requirements?: {
+    role_title?: string;
+    must_haves?: string[];
+    nice_to_haves?: string[];
+  };
+  bullets?: string[];
+  cover_letter?: string;
+  interview?: string[];
+};
+
+function isPackOutput(x: any): x is PackOutput {
+  return (
+    x &&
+    typeof x === "object" &&
+    ("bullets" in x ||
+      "cover_letter" in x ||
+      "interview" in x ||
+      "requirements" in x)
+  );
+}
+
+function extractLatestPackFromMessages(
+  agentMessages: any[]
+): PackOutput | null {
+  // Walk from newest → oldest
+  for (let i = agentMessages.length - 1; i >= 0; i--) {
+    const msg = agentMessages[i];
+    const parts = msg?.parts ?? [];
+
+    for (const part of parts) {
+      // Tool outputs usually show up as tool UI parts
+      if (part && typeof part === "object") {
+        // Some implementations store completed tool output on part.output
+        const out =
+          (part as any).output ??
+          (part as any).result ??
+          (part as any).toolResult ??
+          (part as any).data;
+        // Your packStatus returns: { id, status: { status, error, output } }
+        const maybePack = out?.status?.output ?? out?.output ?? out;
+
+        if (isPackOutput(maybePack)) return maybePack;
+      }
+    }
+  }
+  return null;
+}
+
+function packToMarkdown(pack: PackOutput): string {
+  const role = pack.requirements?.role_title
+    ? `# ApplyMate Pack — ${pack.requirements.role_title}\n\n`
+    : `# ApplyMate Pack\n\n`;
+
+  const req = pack.requirements
+    ? `## Requirements\n\n**Must-haves**\n${(pack.requirements.must_haves ?? [])
+        .map((x) => `- ${x}`)
+        .join("\n")}\n\n**Nice-to-haves**\n${(
+        pack.requirements.nice_to_haves ?? []
+      )
+        .map((x) => `- ${x}`)
+        .join("\n")}\n\n`
+    : "";
+
+  const bullets = pack.bullets?.length
+    ? `## Tailored Resume Bullets\n\n${pack.bullets.map((b) => `- ${b}`).join("\n")}\n\n`
+    : "";
+
+  const cover = pack.cover_letter
+    ? `## Cover Letter\n\n${pack.cover_letter}\n\n`
+    : "";
+
+  const interview = pack.interview?.length
+    ? `## Interview Questions\n\n${pack.interview.map((q, idx) => `${idx + 1}. ${q}`).join("\n")}\n\n`
+    : "";
+
+  return role + req + bullets + cover + interview;
+}
+
+function downloadTextFile(
+  filename: string,
+  content: string,
+  mime = "text/plain"
+) {
+  const blob = new Blob([content], { type: mime });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+function openPrintablePack(pack: PackOutput) {
+  const md = packToMarkdown(pack)
+    // simple HTML escaping for safety
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    // newlines → HTML
+    .replace(/\n/g, "<br/>");
+
+  const html = `<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>ApplyMate Pack</title>
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial; padding: 24px; line-height: 1.5; }
+    .card { max-width: 900px; margin: 0 auto; }
+    .hint { margin-top: 12px; opacity: 0.7; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div>${md}</div>
+    <div class="hint">Tip: Use your browser Print → Save as PDF.</div>
+  </div>
+  <script>
+    // optionally auto-open print dialog:
+    // window.print();
+  </script>
+</body>
+</html>`;
+
+  const win = window.open("", "_blank");
+  if (!win) return;
+  win.document.open();
+  win.document.write(html);
+  win.document.close();
+}
+
 // List of tools that require human confirmation
 // NOTE: this should match the tools that don't have execute functions in tools.ts
 const toolsRequiringConfirmation: (keyof typeof tools)[] = [
   "getWeatherInformation"
 ];
+async function copyToClipboard(text: string) {
+  await navigator.clipboard.writeText(text);
+}
 
 export default function Chat() {
   const [theme, setTheme] = useState<"dark" | "light">(() => {
@@ -40,6 +177,8 @@ export default function Chat() {
   });
   const [showDebug, setShowDebug] = useState(false);
   const [textareaHeight, setTextareaHeight] = useState("auto");
+  const [packOpen, setPackOpen] = useState(false);
+
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = useCallback(() => {
@@ -113,6 +252,10 @@ export default function Chat() {
   } = useAgentChat<unknown, UIMessage<{ createdAt: string }>>({
     agent
   });
+  const latestPack = extractLatestPackFromMessages(agentMessages as any[]);
+  useEffect(() => {
+    if (latestPack) scrollToBottom();
+  }, [latestPack, scrollToBottom]);
 
   // Scroll to bottom when messages change
   useEffect(() => {
@@ -146,7 +289,7 @@ export default function Chat() {
               className="text-[#F48120]"
               data-icon="agents"
             >
-              <title>Cloudflare Agents</title>
+              <title>ApplyMate Agent</title>
               <symbol id="ai:local:agents" viewBox="0 0 80 79">
                 <path
                   fill="currentColor"
@@ -158,7 +301,7 @@ export default function Chat() {
           </div>
 
           <div className="flex-1">
-            <h2 className="font-semibold text-base">AI Chat Agent</h2>
+            <h2 className="font-semibold text-base">ApplyMate AI Chat Agent</h2>
           </div>
 
           <div className="flex items-center gap-2 mr-2">
@@ -192,7 +335,7 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-24 max-h-[calc(100vh-10rem)]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-56 max-h-[calc(100vh-10rem)]">
           {agentMessages.length === 0 && (
             <div className="h-full flex items-center justify-center">
               <Card className="p-6 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900">
@@ -200,19 +343,31 @@ export default function Chat() {
                   <div className="bg-[#F48120]/10 text-[#F48120] rounded-full p-3 inline-flex">
                     <RobotIcon size={24} />
                   </div>
-                  <h3 className="font-semibold text-lg">Welcome to AI Chat</h3>
+                  <h3 className="font-semibold text-lg">
+                    Welcome to ApplyMate
+                  </h3>
                   <p className="text-muted-foreground text-sm">
-                    Start a conversation with your AI assistant. Try asking
-                    about:
+                    Start a conversation with ApplyMate your AI assistant. Try
+                    asking about:
                   </p>
                   <ul className="text-sm text-left space-y-2">
                     <li className="flex items-center gap-2">
                       <span className="text-[#F48120]">•</span>
-                      <span>Weather information for any city</span>
+                      <span>Paste resume and say: save this as my profile</span>
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-[#F48120]">•</span>
-                      <span>Local time in different locations</span>
+                      <span>
+                        Paste job description and say: save this as the job
+                      </span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#F48120]">•</span>
+                      <span>Say: create pack</span>
+                    </li>
+                    <li className="flex items-center gap-2">
+                      <span className="text-[#F48120]">•</span>
+                      <span>Say: pack status</span>
                     </li>
                   </ul>
                 </div>
@@ -341,6 +496,127 @@ export default function Chat() {
           <div ref={messagesEndRef} />
         </div>
 
+        {latestPack && (
+          <div className="px-4 pb-3">
+            <Card className="p-4 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <h3 className="font-semibold text-base">ApplyMate Pack</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Latest generated pack preview + exports
+                  </p>
+                </div>
+
+                <div className="flex gap-2">
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() =>
+                      downloadTextFile(
+                        `applymate-pack-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`,
+                        packToMarkdown(latestPack),
+                        "text/markdown"
+                      )
+                    }
+                  >
+                    Download .md
+                  </Button>
+
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => openPrintablePack(latestPack)}
+                  >
+                    Print / Save PDF
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => copyToClipboard(packToMarkdown(latestPack))}
+                  >
+                    Copy
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="md"
+                    onClick={() => setPackOpen((v) => !v)}
+                  >
+                    {packOpen ? "Collapse" : "Expand"}
+                  </Button>
+                </div>
+              </div>
+              {packOpen && (
+                <div className="mt-4 space-y-4 text-sm">
+                  {latestPack.requirements?.role_title && (
+                    <div>
+                      <div className="font-semibold">Role</div>
+                      <div>{latestPack.requirements.role_title}</div>
+                    </div>
+                  )}
+
+                  {!!latestPack.requirements && (
+                    <div className="grid grid-cols-1 gap-4">
+                      {!!latestPack.requirements.must_haves?.length && (
+                        <div>
+                          <div className="font-semibold">Must-haves</div>
+                          <ul className="list-disc pl-5 mt-1 space-y-1">
+                            {latestPack.requirements.must_haves.map((x) => (
+                              <li key={x}>{x}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+
+                      {!!latestPack.requirements.nice_to_haves?.length && (
+                        <div>
+                          <div className="font-semibold">Nice-to-haves</div>
+                          <ul className="list-disc pl-5 mt-1 space-y-1">
+                            {latestPack.requirements.nice_to_haves.map((x) => (
+                              <li key={x}>{x}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {!!latestPack.bullets?.length && (
+                    <div>
+                      <div className="font-semibold">
+                        Tailored Resume Bullets
+                      </div>
+                      <ul className="list-disc pl-5 mt-1 space-y-1">
+                        {latestPack.bullets.map((b) => (
+                          <li key={b}>{b}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+
+                  {!!latestPack.cover_letter && (
+                    <div>
+                      <div className="font-semibold">Cover Letter</div>
+                      <div className="whitespace-pre-wrap mt-1">
+                        {latestPack.cover_letter}
+                      </div>
+                    </div>
+                  )}
+
+                  {!!latestPack.interview?.length && (
+                    <div>
+                      <div className="font-semibold">Interview Questions</div>
+                      <ol className="list-decimal pl-5 mt-1 space-y-1">
+                        {latestPack.interview.map((q) => (
+                          <li key={q}>{q}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </div>
+              )}
+            </Card>
+          </div>
+        )}
         {/* Input Area */}
         <form
           onSubmit={(e) => {
