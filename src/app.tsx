@@ -335,7 +335,7 @@ export default function Chat() {
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-56 max-h-[calc(100vh-10rem)]">
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 pb-56">
           {agentMessages.length === 0 && (
             <div className="h-full flex items-center justify-center">
               <Card className="p-6 max-w-md mx-auto bg-neutral-100 dark:bg-neutral-900">
@@ -493,130 +493,133 @@ export default function Chat() {
               </div>
             );
           })}
+          {latestPack && (
+            <div className="px-4 pb-3">
+              <Card className="p-4 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <h3 className="font-semibold text-base">ApplyMate Pack</h3>
+                    <p className="text-sm text-muted-foreground">
+                      Latest generated pack preview + exports
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() =>
+                        downloadTextFile(
+                          `applymate-pack-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`,
+                          packToMarkdown(latestPack),
+                          "text/markdown"
+                        )
+                      }
+                    >
+                      Download .md
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => openPrintablePack(latestPack)}
+                    >
+                      Print / Save PDF
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() =>
+                        copyToClipboard(packToMarkdown(latestPack))
+                      }
+                    >
+                      Copy
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="md"
+                      onClick={() => setPackOpen((v) => !v)}
+                    >
+                      {packOpen ? "Collapse" : "Expand"}
+                    </Button>
+                  </div>
+                </div>
+                {packOpen && (
+                  <div className="mt-4 space-y-4 text-sm">
+                    {latestPack.requirements?.role_title && (
+                      <div>
+                        <div className="font-semibold">Role</div>
+                        <div>{latestPack.requirements.role_title}</div>
+                      </div>
+                    )}
+
+                    {!!latestPack.requirements && (
+                      <div className="grid grid-cols-1 gap-4">
+                        {!!latestPack.requirements.must_haves?.length && (
+                          <div>
+                            <div className="font-semibold">Must-haves</div>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              {latestPack.requirements.must_haves.map((x) => (
+                                <li key={x}>{x}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        )}
+
+                        {!!latestPack.requirements.nice_to_haves?.length && (
+                          <div>
+                            <div className="font-semibold">Nice-to-haves</div>
+                            <ul className="list-disc pl-5 mt-1 space-y-1">
+                              {latestPack.requirements.nice_to_haves.map(
+                                (x) => (
+                                  <li key={x}>{x}</li>
+                                )
+                              )}
+                            </ul>
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                    {!!latestPack.bullets?.length && (
+                      <div>
+                        <div className="font-semibold">
+                          Tailored Resume Bullets
+                        </div>
+                        <ul className="list-disc pl-5 mt-1 space-y-1">
+                          {latestPack.bullets.map((b) => (
+                            <li key={b}>{b}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+
+                    {!!latestPack.cover_letter && (
+                      <div>
+                        <div className="font-semibold">Cover Letter</div>
+                        <div className="whitespace-pre-wrap mt-1">
+                          {latestPack.cover_letter}
+                        </div>
+                      </div>
+                    )}
+
+                    {!!latestPack.interview?.length && (
+                      <div>
+                        <div className="font-semibold">Interview Questions</div>
+                        <ol className="list-decimal pl-5 mt-1 space-y-1">
+                          {latestPack.interview.map((q) => (
+                            <li key={q}>{q}</li>
+                          ))}
+                        </ol>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </Card>
+            </div>
+          )}
           <div ref={messagesEndRef} />
         </div>
-
-        {latestPack && (
-          <div className="px-4 pb-3">
-            <Card className="p-4 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-              <div className="flex items-center justify-between gap-3">
-                <div>
-                  <h3 className="font-semibold text-base">ApplyMate Pack</h3>
-                  <p className="text-sm text-muted-foreground">
-                    Latest generated pack preview + exports
-                  </p>
-                </div>
-
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() =>
-                      downloadTextFile(
-                        `applymate-pack-${new Date().toISOString().slice(0, 16).replace(/[:T]/g, "-")}.md`,
-                        packToMarkdown(latestPack),
-                        "text/markdown"
-                      )
-                    }
-                  >
-                    Download .md
-                  </Button>
-
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() => openPrintablePack(latestPack)}
-                  >
-                    Print / Save PDF
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() => copyToClipboard(packToMarkdown(latestPack))}
-                  >
-                    Copy
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="md"
-                    onClick={() => setPackOpen((v) => !v)}
-                  >
-                    {packOpen ? "Collapse" : "Expand"}
-                  </Button>
-                </div>
-              </div>
-              {packOpen && (
-                <div className="mt-4 space-y-4 text-sm">
-                  {latestPack.requirements?.role_title && (
-                    <div>
-                      <div className="font-semibold">Role</div>
-                      <div>{latestPack.requirements.role_title}</div>
-                    </div>
-                  )}
-
-                  {!!latestPack.requirements && (
-                    <div className="grid grid-cols-1 gap-4">
-                      {!!latestPack.requirements.must_haves?.length && (
-                        <div>
-                          <div className="font-semibold">Must-haves</div>
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            {latestPack.requirements.must_haves.map((x) => (
-                              <li key={x}>{x}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-
-                      {!!latestPack.requirements.nice_to_haves?.length && (
-                        <div>
-                          <div className="font-semibold">Nice-to-haves</div>
-                          <ul className="list-disc pl-5 mt-1 space-y-1">
-                            {latestPack.requirements.nice_to_haves.map((x) => (
-                              <li key={x}>{x}</li>
-                            ))}
-                          </ul>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {!!latestPack.bullets?.length && (
-                    <div>
-                      <div className="font-semibold">
-                        Tailored Resume Bullets
-                      </div>
-                      <ul className="list-disc pl-5 mt-1 space-y-1">
-                        {latestPack.bullets.map((b) => (
-                          <li key={b}>{b}</li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-
-                  {!!latestPack.cover_letter && (
-                    <div>
-                      <div className="font-semibold">Cover Letter</div>
-                      <div className="whitespace-pre-wrap mt-1">
-                        {latestPack.cover_letter}
-                      </div>
-                    </div>
-                  )}
-
-                  {!!latestPack.interview?.length && (
-                    <div>
-                      <div className="font-semibold">Interview Questions</div>
-                      <ol className="list-decimal pl-5 mt-1 space-y-1">
-                        {latestPack.interview.map((q) => (
-                          <li key={q}>{q}</li>
-                        ))}
-                      </ol>
-                    </div>
-                  )}
-                </div>
-              )}
-            </Card>
-          </div>
-        )}
         {/* Input Area */}
         <form
           onSubmit={(e) => {
@@ -628,7 +631,7 @@ export default function Chat() {
             });
             setTextareaHeight("auto"); // Reset height after submission
           }}
-          className="p-3 bg-neutral-50 absolute bottom-0 left-0 right-0 z-10 border-t border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
+          className="p-3 bg-neutral-50 sticky bottom-0 left-0 right-0 z-10 border-t border-neutral-300 dark:border-neutral-800 dark:bg-neutral-900"
         >
           <div className="flex items-center gap-2">
             <div className="flex-1 relative">
