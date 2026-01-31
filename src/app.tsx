@@ -496,7 +496,7 @@ export default function Chat() {
           {latestPack && (
             <div className="px-4 pb-3">
               <Card className="p-4 bg-neutral-100 dark:bg-neutral-900 border border-neutral-200 dark:border-neutral-800">
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                   <div>
                     <h3 className="font-semibold text-base">ApplyMate Pack</h3>
                     <p className="text-sm text-muted-foreground">
@@ -504,7 +504,7 @@ export default function Chat() {
                     </p>
                   </div>
 
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
                     <Button
                       variant="ghost"
                       size="md"
