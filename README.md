@@ -131,11 +131,12 @@ Built on Cloudflare Agents starter template. Original template docs available in
 ---
 
 ## 📬 Author
-Noel Thomas Edison
-MSc Artificial Intelligence & Machine Learning
-University of Birmingham
+Noel Thomas Edison, 
+MSc Artificial Intelligence & Machine Learning, 
+University of Birmingham, 
+GitHub: 
 ```bash
-GitHub: https://github.com/noelthomasedison
+https://github.com/noelthomasedison
 ```
 
 ---
